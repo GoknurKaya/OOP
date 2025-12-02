@@ -1,0 +1,20 @@
+﻿@model DAL.Models.Player
+@{
+    ViewData["Title"] = "Giriş";
+}
+
+<h2>Battleship Giriş</h2>
+
+<form asp-action="Login" method="post">
+    <div class="form-group">
+        <label for="username">Kullanıcı Adı:</label>
+        <input type="text" id="username" name="username" class="form-control" required />
+    </div>
+    <br>
+    <button type="submit" class="btn btn-primary">Oyna (Play)</button>
+</form>
+
+@if (ViewBag.Error != null)
+{
+    <p class="text-danger">@ViewBag.Error</p>
+}

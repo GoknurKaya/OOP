@@ -1,0 +1,164 @@
+﻿@model OOP.Models.GameViewModel
+@{
+    ViewData["Title"] = "Oyun Ekranı";
+}
+
+<style>
+    .grid-container {
+        display: grid;
+        grid-template-columns: repeat(10, 30px);
+        grid-template-rows: repeat(10, 30px);
+        gap: 1px;
+        border: 2px solid #333;
+    }
+
+    .grid-cell {
+        background-color: #eee;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+    }
+
+    .grid-cell-player {
+        cursor: default;
+    }
+
+    .status-0 {
+        background-color: #eee;
+    }
+    /* Boş */
+    .status-1 {
+        background-color: #555;
+        color: white;
+    }
+    /* Gemi (Oyuncunun tahtası) */
+    .status-2 {
+        background-color: #d9534f;
+    }
+    /* İsabet (Hit) */
+    .status-3 {
+        background-color: #5bc0de;
+    }
+    /* Iska (Miss) */
+</style>
+
+<h2>💣 Battleship - Savaş Alanı</h2>
+<hr>
+
+<div class="row">
+    <div class="col-6">
+        <h3>Sizin Tahtanız</h3>
+        <div class="grid-container" id="player-board">
+            @{
+                for (int y = 0; y < 10; y++)
+                {
+                    for (int x = 0; x < 10; x++)
+                    {
+                        string statusClass = $"status-{Model.PlayerBoardData[x, y]}";
+                        <div class="grid-cell grid-cell-player @statusClass" data-x="@x" data-y="@y">@(Model.PlayerBoardData[x, y] == 1 ? "🚢" : "")</div>
+                    }
+                }
+            }
+        </div>
+    </div>
+
+    <div class="col-6">
+        <h3>Rakip Tahtası (Atış Alanınız)</h3>
+        <div class="grid-container" id="ai-board">
+            @{
+                for (int y = 0; y < 10; y++)
+                {
+                    for (int x = 0; x < 10; x++)
+                    {
+                        int status = Model.AIBoardData[x, y];
+                        string statusClass = $"status-{(status == 1 ? 0 : status)}";
+                        <div class="grid-cell ai-cell @statusClass" data-x="@x" data-y="@y"></div>
+                    }
+                }
+            }
+        </div>
+        <p id="message" class="mt-3"></p>
+        <p>Atış Sayısı: <span id="shot-count">0</span></p>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    var shotCount = 0;
+
+    $(document).ready(function () {
+
+        $('.ai-cell').on('click', function () {
+            var cell = $(this);
+            if (cell.hasClass('status-2') || cell.hasClass('status-3')) {
+                $('#message').text('Buraya daha önce ateş ettiniz!');
+                return;
+            }
+
+            var x = cell.data('x');
+            var y = cell.data('y');
+
+            shotCount++;
+            $('#shot-count').text(shotCount);
+
+            // AJAX ile Controller'a atış yap
+            $.ajax({
+                url: '@Url.Action("Fire", "Home")',
+                type: 'POST',
+                data: { x: x, y: y },
+                success: function (response) {
+                    if (response.success) {
+                        // Oyuncu atış sonucu
+                        if (response.playerHit) {
+                            cell.removeClass('status-0').addClass('status-2'); // Kırmızı (Hit)
+                            $('#message').text('İsabet! Düşman gemisini vurdunuz.');
+                        } else {
+                            cell.removeClass('status-0').addClass('status-3'); // Mavi (Miss)
+                            $('#message').text('Iska! Vuramadınız.');
+                        }
+
+                        // Kazanma kontrolü
+                        if (response.gameover && response.winner === "Player") {
+                            alert("Tebrikler! Tüm düşman gemilerini batırdınız. Kazandınız!");
+                            $('#end-game-iswin').val('true');
+                            $('#end-game-shots').val(shotCount);
+                            $('#end-game-form').submit();
+                            return;
+                        }
+
+                        // AI atış sonucu (Oyuncunun tahtasına yansıt)
+                        var aiShotCell = $(`#player-board .grid-cell[data-x=${response.aiShot.x}][data-y=${response.aiShot.y}]`);
+                        if (response.aiShot.hit) {
+                            aiShotCell.removeClass('status-1').addClass('status-2');
+                            $('#message').append(' | Düşman isabet etti!');
+                        } else {
+                            aiShotCell.removeClass('status-1').addClass('status-3');
+                            $('#message').append(' | Düşman ıskaladı.');
+                        }
+
+                        // Kaybetme kontrolü
+                        if (response.gameover && response.winner === "AI") {
+                            alert("Kaybettiniz! Düşman tüm gemilerinizi batırdı.");
+                            $('#end-game-iswin').val('false');
+                            $('#end-game-shots').val(0); // Kaybettiği için atış sayısı 0
+                            $('#end-game-form').submit();
+                        }
+                    } else {
+                        $('#message').text(response.message || 'Bir hata oluştu.');
+                    }
+                },
+                error: function () {
+                    $('#message').text('Sunucu hatası.');
+                }
+            });
+        });
+    });
+</script>
+
+<form asp-action="EndGame" method="post" id="end-game-form" style="display:none;">
+    <input type="hidden" id="end-game-iswin" name="isWin" value="false" />
+    <input type="hidden" id="end-game-shots" name="shotsTaken" value="0" />
+</form>

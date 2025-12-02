@@ -1,0 +1,26 @@
+﻿@model DAL.Models.Player
+@{
+    ViewData["Title"] = "İstatistiklerim";
+}
+
+<h2>📊 @Model.Username'in İstatistikleri</h2>
+<hr />
+
+<dl class="row">
+    <dt class="col-sm-4">Toplam Oyun Sayısı:</dt>
+    <dd class="col-sm-8">@Model.TotalGamesPlayed</dd>
+
+    <dt class="col-sm-4">Toplam Galibiyet:</dt>
+    <dd class="col-sm-8">@Model.TotalWins</dd>
+
+    <dt class="col-sm-4">Toplam Atış:</dt>
+    <dd class="col-sm-8">@Model.TotalShotsFired</dd>
+
+    <dt class="col-sm-4">Kazanma Oranı (Win Rate):</dt>
+    <dd class="col-sm-8">@Model.WinRate.ToString("F2")%</dd>
+
+    <dt class="col-sm-4">Ort. Kazanma Atışı (Avg. Shots per Win):</dt>
+    <dd class="col-sm-8">@Model.AverageShotsPerWin.ToString("F2")</dd>
+</dl>
+
+<a asp-action="GameScreen" class="btn btn-secondary">Oyuna Dön</a>
