@@ -5,8 +5,8 @@ namespace OOP.Models
 {
     public class GameViewModel
     {
-        // Tahta verileri DAL'dan geliyor.
-        public int[,] PlayerBoardData { get; set; }
-        public int[,] AIBoardData { get; set; }
+        // DEĞİŞİKLİK BURADA: Tip List<List<int>> oldu.
+        public List<List<int>> PlayerBoardData { get; set; }
+        public List<List<int>> AIBoardData { get; set; }
     }
 }

@@ -29,20 +29,24 @@
     .status-0 {
         background-color: #eee;
     }
-    /* Boş */
+
     .status-1 {
         background-color: #555;
         color: white;
     }
-    /* Gemi (Oyuncunun tahtası) */
+
     .status-2 {
         background-color: #d9534f;
     }
-    /* İsabet (Hit) */
+
     .status-3 {
         background-color: #5bc0de;
     }
-    /* Iska (Miss) */
+
+    .disabled-board {
+        pointer-events: none;
+        opacity: 0.6;
+    }
 </style>
 
 <h2>💣 Battleship - Savaş Alanı</h2>
@@ -52,14 +56,15 @@
     <div class="col-6">
         <h3>Sizin Tahtanız</h3>
         <div class="grid-container" id="player-board">
-            @{
-                for (int y = 0; y < 10; y++)
+            @for (int y = 0; y < 10; y++)
+            {
+                for (int x = 0; x < 10; x++)
                 {
-                    for (int x = 0; x < 10; x++)
-                    {
-                        string statusClass = $"status-{Model.PlayerBoardData[x, y]}";
-                        <div class="grid-cell grid-cell-player @statusClass" data-x="@x" data-y="@y">@(Model.PlayerBoardData[x, y] == 1 ? "🚢" : "")</div>
-                    }
+                    var cellValue = Model.PlayerBoardData[x][y];
+                    var statusClass = $"status-{cellValue}";
+                    <div class="grid-cell grid-cell-player @statusClass" data-x="@x" data-y="@y">
+                        @(cellValue == 1 ? "🚢" : "")
+                    </div>
                 }
             }
         </div>
@@ -68,15 +73,13 @@
     <div class="col-6">
         <h3>Rakip Tahtası (Atış Alanınız)</h3>
         <div class="grid-container" id="ai-board">
-            @{
-                for (int y = 0; y < 10; y++)
+            @for (int y = 0; y < 10; y++)
+            {
+                for (int x = 0; x < 10; x++)
                 {
-                    for (int x = 0; x < 10; x++)
-                    {
-                        int status = Model.AIBoardData[x, y];
-                        string statusClass = $"status-{(status == 1 ? 0 : status)}";
-                        <div class="grid-cell ai-cell @statusClass" data-x="@x" data-y="@y"></div>
-                    }
+                    var status = Model.AIBoardData[x][y];
+                    var statusClass = $"status-{(status == 1 ? 0 : status)}";
+                    <div class="grid-cell ai-cell @statusClass" data-x="@x" data-y="@y"></div>
                 }
             }
         </div>
@@ -85,80 +88,92 @@
     </div>
 </div>
 
+<a asp-action="Statistics" class="btn btn-info mt-3">📊 İstatistiklerime Bak</a>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     var shotCount = 0;
+    var isProcessing = false;
 
     $(document).ready(function () {
-
         $('.ai-cell').on('click', function () {
+            if (isProcessing) {
+                $('#message').text('⏳ Lütfen bekleyin...');
+                return;
+            }
+
             var cell = $(this);
             if (cell.hasClass('status-2') || cell.hasClass('status-3')) {
-                $('#message').text('Buraya daha önce ateş ettiniz!');
+                $('#message').text('⚠️ Buraya daha önce ateş ettiniz!');
                 return;
             }
 
             var x = cell.data('x');
             var y = cell.data('y');
 
+            isProcessing = true;
+            $('#ai-board').addClass('disabled-board');
+
             shotCount++;
             $('#shot-count').text(shotCount);
 
-            // AJAX ile Controller'a atış yap
             $.ajax({
                 url: '@Url.Action("Fire", "Home")',
                 type: 'POST',
                 data: { x: x, y: y },
                 success: function (response) {
-                    if (response.success) {
-                        // Oyuncu atış sonucu
-                        if (response.playerHit) {
-                            cell.removeClass('status-0').addClass('status-2'); // Kırmızı (Hit)
-                            $('#message').text('İsabet! Düşman gemisini vurdunuz.');
+                    if (!response.success) {
+                        $('#message').text(response.message || 'Bir hata oluştu.');
+                        isProcessing = false;
+                        $('#ai-board').removeClass('disabled-board');
+                        return;
+                    }
+
+                    if (response.playerHit) {
+                        cell.removeClass('status-0').addClass('status-2').text('💥');
+                        $('#message').text('🎯 İsabet! Düşman gemisini vurdunuz.');
+                    } else {
+                        cell.removeClass('status-0').addClass('status-3').text('○');
+                        $('#message').text('💨 Iska! Vuramadınız.');
+                    }
+
+                    if (response.gameover && response.winner === "Player") {
+                        setTimeout(function() {
+                            alert("🎉 Tebrikler! Tüm düşman gemilerini batırdınız. Kazandınız!");
+                            window.location.href = '@Url.Action("Statistics", "Home")';
+                        }, 500);
+                        return;
+                    }
+
+                    setTimeout(function() {
+                        var aiShotCell = $('#player-board .grid-cell[data-x="' + response.aiShot.x + '"][data-y="' + response.aiShot.y + '"]');
+
+                        if (response.aiShot.hit) {
+                            aiShotCell.removeClass('status-1').addClass('status-2').text('💥');
+                            $('#message').append(' | 🤖 Düşman isabet etti!');
                         } else {
-                            cell.removeClass('status-0').addClass('status-3'); // Mavi (Miss)
-                            $('#message').text('Iska! Vuramadınız.');
+                            aiShotCell.removeClass('status-0 status-1').addClass('status-3').text('○');
+                            $('#message').append(' | 🤖 Düşman ıskaladı.');
                         }
 
-                        // Kazanma kontrolü
-                        if (response.gameover && response.winner === "Player") {
-                            alert("Tebrikler! Tüm düşman gemilerini batırdınız. Kazandınız!");
-                            $('#end-game-iswin').val('true');
-                            $('#end-game-shots').val(shotCount);
-                            $('#end-game-form').submit();
+                        if (response.gameover && response.winner === "AI") {
+                            setTimeout(function() {
+                                alert("😞 Kaybettiniz! Düşman tüm gemilerinizi batırdı.");
+                                window.location.href = '@Url.Action("Statistics", "Home")';
+                            }, 500);
                             return;
                         }
 
-                        // AI atış sonucu (Oyuncunun tahtasına yansıt)
-                        var aiShotCell = $(`#player-board .grid-cell[data-x=${response.aiShot.x}][data-y=${response.aiShot.y}]`);
-                        if (response.aiShot.hit) {
-                            aiShotCell.removeClass('status-1').addClass('status-2');
-                            $('#message').append(' | Düşman isabet etti!');
-                        } else {
-                            aiShotCell.removeClass('status-1').addClass('status-3');
-                            $('#message').append(' | Düşman ıskaladı.');
-                        }
-
-                        // Kaybetme kontrolü
-                        if (response.gameover && response.winner === "AI") {
-                            alert("Kaybettiniz! Düşman tüm gemilerinizi batırdı.");
-                            $('#end-game-iswin').val('false');
-                            $('#end-game-shots').val(0); // Kaybettiği için atış sayısı 0
-                            $('#end-game-form').submit();
-                        }
-                    } else {
-                        $('#message').text(response.message || 'Bir hata oluştu.');
-                    }
+                        isProcessing = false;
+                        $('#ai-board').removeClass('disabled-board');
+                    }, 800);
                 },
                 error: function () {
-                    $('#message').text('Sunucu hatası.');
+                    $('#message').text('❌ Sunucu hatası.');
+                    isProcessing = false;
+                    $('#ai-board').removeClass('disabled-board');
                 }
             });
         });
     });
 </script>
-
-<form asp-action="EndGame" method="post" id="end-game-form" style="display:none;">
-    <input type="hidden" id="end-game-iswin" name="isWin" value="false" />
-    <input type="hidden" id="end-game-shots" name="shotsTaken" value="0" />
-</form>

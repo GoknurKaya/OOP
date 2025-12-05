@@ -1,8 +1,7 @@
 ﻿// DAL/Models/Battleship.cs
-using DAL; // Ship.cs'yi kullanmak için
-
-namespace DAL.Models
+namespace DAL.Models.Private
 {
+    // Ad alanı: DAL.Models
     public class Battleship : Ship
     {
         public Battleship()

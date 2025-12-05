@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace DAL.Models
+namespace DAL.Models.General
 {
     // Veritabanı tablosunu temsil eden model
     public class Player
