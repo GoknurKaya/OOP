@@ -1,11 +1,9 @@
-﻿// OOP/Controllers/HomeController.cs
-using DAL;
-using DAL.Models; // Player modelini kullanmak için
+﻿using DAL;
 using DAL.Models.General;
-using DAL.Models.Private;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using OOP.Models; // GameViewModel'i kullanmak için
+using OOP.Models;
+using System.Text.Json;
 
 namespace OOP.Controllers
 {
@@ -18,16 +16,12 @@ namespace OOP.Controllers
             _context = context;
         }
 
-        // -----------------------------------------------------------
-        // 👤 [GET] Login ve [POST] Login Metotları (Aynı kalır)
-        // -----------------------------------------------------------
         [HttpGet]
         public IActionResult Login() => View();
 
         [HttpPost]
         public async Task<IActionResult> Login(string username)
         {
-            // ... (Kullanıcı bulma/oluşturma mantığı)
             if (string.IsNullOrWhiteSpace(username))
             {
                 ViewBag.Error = "Kullanıcı adı boş olamaz.";
@@ -43,31 +37,93 @@ namespace OOP.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            HttpContext.Session.Remove("PlayerBoard");
-            HttpContext.Session.Remove("AIBoard");
-
+            HttpContext.Session.Clear();
             HttpContext.Session.SetInt32("CurrentPlayerId", player.Id);
-            return RedirectToAction("GameScreen");
+
+            return RedirectToAction("ShipPlacement");
         }
 
-        // -----------------------------------------------------------
-        // 🎮 [GET] Ana Oyun Ekranı (GameBoard'lar tanımlanır)
-        // -----------------------------------------------------------
+        [HttpGet]
+        public IActionResult ShipPlacement()
+        {
+            if (!HttpContext.Session.GetInt32("CurrentPlayerId").HasValue)
+                return RedirectToAction("Login");
+
+            var playerBoard = new GameBoard();
+            playerBoard.InitializeFleet();
+
+            HttpContext.Session.SetString("PlayerBoard", JsonSerializer.Serialize(playerBoard));
+
+            return View(playerBoard);
+        }
+
+        [HttpPost]
+        public IActionResult PlaceShip(int shipIndex, int startX, int startY, bool isHorizontal)
+        {
+            var playerBoardJson = HttpContext.Session.GetString("PlayerBoard");
+            if (string.IsNullOrEmpty(playerBoardJson))
+                return Json(new { success = false, message = "Tahta bulunamadı" });
+
+            var playerBoard = JsonSerializer.Deserialize<GameBoard>(playerBoardJson);
+
+            bool placed = playerBoard.PlaceShipManually(shipIndex, startX, startY, isHorizontal);
+
+            if (placed)
+            {
+                HttpContext.Session.SetString("PlayerBoard", JsonSerializer.Serialize(playerBoard));
+                return Json(new { success = true, board = playerBoard.GridData });
+            }
+
+            return Json(new { success = false, message = "Gemi yerleştirilemedi" });
+        }
+
+        [HttpPost]
+        public IActionResult PlaceShipsRandomly()
+        {
+            var playerBoard = new GameBoard();
+            playerBoard.PlaceShipsRandomly();
+
+            HttpContext.Session.SetString("PlayerBoard", JsonSerializer.Serialize(playerBoard));
+
+            return Json(new { success = true, board = playerBoard.GridData });
+        }
+
+        [HttpPost]
+        public IActionResult StartGame()
+        {
+            var playerBoardJson = HttpContext.Session.GetString("PlayerBoard");
+            if (string.IsNullOrEmpty(playerBoardJson))
+                return Json(new { success = false, message = "Gemiler yerleştirilmedi" });
+
+            var playerBoard = JsonSerializer.Deserialize<GameBoard>(playerBoardJson);
+
+            bool allShipsPlaced = playerBoard.Fleet.All(s => s.Coordinates != null && s.Coordinates.Count > 0);
+
+            if (!allShipsPlaced)
+                return Json(new { success = false, message = "Tüm gemileri yerleştirin" });
+
+            var aiBoard = new GameBoard();
+            aiBoard.PlaceShipsRandomly();
+
+            HttpContext.Session.SetString("AIBoard", JsonSerializer.Serialize(aiBoard));
+            HttpContext.Session.SetInt32("ShotCount", 0);
+
+            return Json(new { success = true });
+        }
+
         public IActionResult GameScreen()
         {
-            if (!HttpContext.Session.GetInt32("CurrentPlayerId").HasValue) return RedirectToAction("Login");
+            if (!HttpContext.Session.GetInt32("CurrentPlayerId").HasValue)
+                return RedirectToAction("Login");
 
-            GameBoard playerBoard = HttpContext.Session.GetObject<GameBoard>("PlayerBoard");
-            GameBoard aiBoard = HttpContext.Session.GetObject<GameBoard>("AIBoard");
+            var playerBoardJson = HttpContext.Session.GetString("PlayerBoard");
+            var aiBoardJson = HttpContext.Session.GetString("AIBoard");
 
-            if (playerBoard == null || aiBoard == null)
-            {
-                playerBoard = new GameBoard();
-                aiBoard = new GameBoard();
+            if (string.IsNullOrEmpty(playerBoardJson) || string.IsNullOrEmpty(aiBoardJson))
+                return RedirectToAction("ShipPlacement");
 
-                HttpContext.Session.SetObject("PlayerBoard", playerBoard);
-                HttpContext.Session.SetObject("AIBoard", aiBoard);
-            }
+            var playerBoard = JsonSerializer.Deserialize<GameBoard>(playerBoardJson);
+            var aiBoard = JsonSerializer.Deserialize<GameBoard>(aiBoardJson);
 
             var gameViewModel = new GameViewModel
             {
@@ -78,77 +134,89 @@ namespace OOP.Controllers
             return View(gameViewModel);
         }
 
-        // -----------------------------------------------------------
-        // 💥 [POST] Atış İşlemi (Anonim Tip ve Değişken Tanımlama Hataları Düzeltildi)
-        // -----------------------------------------------------------
         [HttpPost]
         public IActionResult Fire(int x, int y)
         {
-            if (!HttpContext.Session.GetInt32("CurrentPlayerId").HasValue) return Unauthorized();
+            if (!HttpContext.Session.GetInt32("CurrentPlayerId").HasValue)
+                return Unauthorized();
 
-            // Tahtalar her zaman Fire metodu içinde tanımlanmalıdır
-            GameBoard aiBoard = HttpContext.Session.GetObject<GameBoard>("AIBoard");
-            GameBoard playerBoard = HttpContext.Session.GetObject<GameBoard>("PlayerBoard");
+            var aiBoardJson = HttpContext.Session.GetString("AIBoard");
+            var playerBoardJson = HttpContext.Session.GetString("PlayerBoard");
 
-            if (aiBoard == null || playerBoard == null)
+            if (string.IsNullOrEmpty(aiBoardJson) || string.IsNullOrEmpty(playerBoardJson))
                 return Json(new { success = false, message = "Oyun yeniden başlatılmalı." });
 
-            // Hızlı tıklama/Aynı bloğa basma açığı kontrolü
+            var aiBoard = JsonSerializer.Deserialize<GameBoard>(aiBoardJson);
+            var playerBoard = JsonSerializer.Deserialize<GameBoard>(playerBoardJson);
+
             if (aiBoard.GetSquareStatus(x, y) == 2 || aiBoard.GetSquareStatus(x, y) == 3)
             {
-                // alreadyShot property'si anonim tipe eklendi.
                 return Json(new { success = false, message = "Bu kareye daha önce ateş ettiniz.", alreadyShot = true });
             }
 
-            // 1. Oyuncunun Atışı
-            bool playerHit = aiBoard.FireAt(x, y);
-            int playerStatus = aiBoard.GetSquareStatus(x, y); // Durum burada tanımlandı (CS0103 çözümü)
+            int shotCount = HttpContext.Session.GetInt32("ShotCount") ?? 0;
+            shotCount++;
+            HttpContext.Session.SetInt32("ShotCount", shotCount);
 
-            // Kazanma kontrolü
+            bool playerHit = aiBoard.FireAt(x, y);
+            int playerStatus = aiBoard.GetSquareStatus(x, y);
+
             if (aiBoard.AllShipsSunk())
             {
-                HttpContext.Session.Remove("PlayerBoard");
-                HttpContext.Session.Remove("AIBoard");
-                return Json(new { success = true, gameover = true, winner = "Player", PlayerHit = playerHit, PlayerStatus = playerStatus });
+                HttpContext.Session.SetString("AIBoard", JsonSerializer.Serialize(aiBoard));
+                return Json(new
+                {
+                    success = true,
+                    gameover = true,
+                    winner = "Player",
+                    PlayerHit = playerHit,
+                    PlayerStatus = playerStatus,
+                    shotCount = shotCount
+                });
             }
 
-            // 2. AI'nın Atışı
             Random rand = new Random();
             int aiX, aiY;
+            int attempts = 0;
 
             do
             {
                 aiX = rand.Next(10);
                 aiY = rand.Next(10);
-            } while (playerBoard.GetSquareStatus(aiX, aiY) == 2 || playerBoard.GetSquareStatus(aiX, aiY) == 3);
+                attempts++;
+            } while ((playerBoard.GetSquareStatus(aiX, aiY) == 2 || playerBoard.GetSquareStatus(aiX, aiY) == 3) && attempts < 100);
 
             bool aiHit = playerBoard.FireAt(aiX, aiY);
+            int aiStatus = playerBoard.GetSquareStatus(aiX, aiY);
 
-            // Kaybetme kontrolü
             if (playerBoard.AllShipsSunk())
             {
-                HttpContext.Session.Remove("PlayerBoard");
-                HttpContext.Session.Remove("AIBoard");
-                return Json(new { success = true, gameover = true, winner = "AI", PlayerHit = playerHit, PlayerStatus = playerStatus });
+                HttpContext.Session.SetString("PlayerBoard", JsonSerializer.Serialize(playerBoard));
+                HttpContext.Session.SetString("AIBoard", JsonSerializer.Serialize(aiBoard));
+                return Json(new
+                {
+                    success = true,
+                    gameover = true,
+                    winner = "AI",
+                    PlayerHit = playerHit,
+                    PlayerStatus = playerStatus,
+                    aiShot = new { x = aiX, y = aiY, hit = aiHit, status = aiStatus },
+                    shotCount = shotCount
+                });
             }
 
-            // Tahtaları Session'a kaydet (Güncelle)
-            HttpContext.Session.SetObject("AIBoard", aiBoard);
-            HttpContext.Session.SetObject("PlayerBoard", playerBoard);
+            HttpContext.Session.SetString("AIBoard", JsonSerializer.Serialize(aiBoard));
+            HttpContext.Session.SetString("PlayerBoard", JsonSerializer.Serialize(playerBoard));
 
-            // Başarılı AJAX yanıtı
             return Json(new
             {
                 success = true,
                 PlayerHit = playerHit,
-                PlayerStatus = playerStatus, // Anonim tip property'si
-                aiShot = new { x = aiX, y = aiY, hit = aiHit, status = playerBoard.GetSquareStatus(aiX, aiY) }
+                PlayerStatus = playerStatus,
+                aiShot = new { x = aiX, y = aiY, hit = aiHit, status = aiStatus }
             });
         }
 
-        // -----------------------------------------------------------
-        // 🏁 [POST] EndGame ve 📊 [GET] Statistics Metotları (Aynı kalır)
-        // -----------------------------------------------------------
         [HttpPost]
         public async Task<IActionResult> EndGame(bool isWin, int shotsTaken)
         {
@@ -156,7 +224,6 @@ namespace OOP.Controllers
             if (!playerId.HasValue) return Unauthorized();
 
             var player = await _context.Players.FindAsync(playerId.Value);
-
             if (player == null) return NotFound();
 
             player.TotalGamesPlayed++;
@@ -168,7 +235,12 @@ namespace OOP.Controllers
             }
 
             await _context.SaveChangesAsync();
-            return RedirectToAction("Statistics");
+
+            HttpContext.Session.Remove("PlayerBoard");
+            HttpContext.Session.Remove("AIBoard");
+            HttpContext.Session.Remove("ShotCount");
+
+            return Ok();
         }
 
         public async Task<IActionResult> Statistics()

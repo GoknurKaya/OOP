@@ -1,0 +1,245 @@
+﻿@model DAL.Models.General.GameBoard
+@{
+    ViewData["Title"] = "Gemi Yerleştirme";
+}
+
+<style>
+    .grid-container {
+        display: grid;
+        grid-template-columns: repeat(10, 40px);
+        grid-template-rows: repeat(10, 40px);
+        gap: 2px;
+        border: 3px solid #333;
+        margin: 20px auto;
+        width: fit-content;
+    }
+
+    .grid-cell {
+        background-color: #e3f2fd;
+        border: 1px solid #90caf9;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        transition: all 0.2s;
+    }
+
+    .grid-cell:hover {
+        background-color: #bbdefb;
+        transform: scale(1.05);
+    }
+
+    .status-1 {
+        background-color: #4caf50;
+        color: white;
+    }
+
+    .ship-list {
+        list-style: none;
+        padding: 0;
+    }
+
+    .ship-item {
+        padding: 15px;
+        margin: 10px 0;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .ship-item:hover {
+        background-color: #f5f5f5;
+        border-color: #2196f3;
+    }
+
+    .ship-item.selected {
+        background-color: #2196f3;
+        color: white;
+        border-color: #1976d2;
+    }
+
+    .ship-item.placed {
+        background-color: #4caf50;
+        color: white;
+        border-color: #388e3c;
+    }
+
+    .controls {
+        margin: 20px 0;
+    }
+
+    .btn-custom {
+        margin: 5px;
+        padding: 10px 20px;
+    }
+</style>
+
+<div class="container">
+    <h2 class="text-center">⚓ Gemilerinizi Yerleştirin</h2>
+    <hr>
+
+    <div class="row">
+        <div class="col-md-3">
+            <h4>Gemiler</h4>
+            <ul class="ship-list" id="ship-list">
+                @for (int i = 0; i < Model.Fleet.Count; i++)
+                {
+                    var ship = Model.Fleet[i];
+                    <li class="ship-item" data-ship-index="@i" data-ship-size="@ship.Size">
+                        <strong>@ship.Name</strong><br>
+                        Boyut: @ship.Size kare
+                    </li>
+                }
+            </ul>
+
+            <div class="controls">
+                <h5>Yön:</h5>
+                <button id="btn-horizontal" class="btn btn-primary btn-custom">➡️ Yatay</button>
+                <button id="btn-vertical" class="btn btn-secondary btn-custom">⬇️ Dikey</button>
+            </div>
+
+            <button id="btn-random" class="btn btn-warning btn-block mt-3">🎲 Rastgele Yerleştir</button>
+            <button id="btn-start" class="btn btn-success btn-block mt-3">🚀 Oyunu Başlat</button>
+        </div>
+
+        <div class="col-md-9">
+            <h4 class="text-center">Tahtanız</h4>
+            <div class="grid-container" id="player-board">
+                @for (int y = 0; y < 10; y++)
+                {
+                    for (int x = 0; x < 10; x++)
+                    {
+                        var cellValue = Model.GridData[x][y];
+                        var statusClass = cellValue == 1 ? "status-1" : "";
+                        <div class="grid-cell @statusClass" data-x="@x" data-y="@y">
+                            @(cellValue == 1 ? "🚢" : "")
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    var selectedShipIndex = -1;
+    var isHorizontal = true;
+    var shipsPlaced = [false, false, false];
+
+    $(document).ready(function () {
+        $('#btn-horizontal').click(function () {
+            isHorizontal = true;
+            $('#btn-horizontal').removeClass('btn-secondary').addClass('btn-primary');
+            $('#btn-vertical').removeClass('btn-primary').addClass('btn-secondary');
+        });
+
+        $('#btn-vertical').click(function () {
+            isHorizontal = false;
+            $('#btn-vertical').removeClass('btn-secondary').addClass('btn-primary');
+            $('#btn-horizontal').removeClass('btn-primary').addClass('btn-secondary');
+        });
+
+        $('.ship-item').click(function () {
+            if ($(this).hasClass('placed')) {
+                alert('Bu gemi zaten yerleştirildi. Rastgele yerleştir ile sıfırlayabilirsiniz.');
+                return;
+            }
+
+            $('.ship-item').removeClass('selected');
+            $(this).addClass('selected');
+            selectedShipIndex = $(this).data('ship-index');
+        });
+
+        $('.grid-cell').click(function () {
+            if (selectedShipIndex === -1) {
+                alert('Önce bir gemi seçin!');
+                return;
+            }
+
+            var x = $(this).data('x');
+            var y = $(this).data('y');
+
+            $.ajax({
+                url: '@Url.Action("PlaceShip", "Home")',
+                type: 'POST',
+                data: {
+                    shipIndex: selectedShipIndex,
+                    startX: x,
+                    startY: y,
+                    isHorizontal: isHorizontal
+                },
+                success: function (response) {
+                    if (response.success) {
+                        updateBoard(response.board);
+                        $('.ship-item[data-ship-index="' + selectedShipIndex + '"]').removeClass('selected').addClass('placed');
+                        shipsPlaced[selectedShipIndex] = true;
+                        selectedShipIndex = -1;
+                    } else {
+                        alert(response.message || 'Gemi bu konuma yerleştirilemez!');
+                    }
+                },
+                error: function () {
+                    alert('Bir hata oluştu.');
+                }
+            });
+        });
+
+        $('#btn-random').click(function () {
+            $.ajax({
+                url: '@Url.Action("PlaceShipsRandomly", "Home")',
+                type: 'POST',
+                success: function (response) {
+                    if (response.success) {
+                        updateBoard(response.board);
+                        $('.ship-item').removeClass('selected').addClass('placed');
+                        shipsPlaced = [true, true, true];
+                        selectedShipIndex = -1;
+                        alert('Gemiler rastgele yerleştirildi!');
+                    }
+                },
+                error: function () {
+                    alert('Bir hata oluştu.');
+                }
+            });
+        });
+
+        $('#btn-start').click(function () {
+            if (!shipsPlaced.every(s => s)) {
+                alert('Önce tüm gemileri yerleştirin!');
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("StartGame", "Home")',
+                type: 'POST',
+                success: function (response) {
+                    if (response.success) {
+                        window.location.href = '@Url.Action("GameScreen", "Home")';
+                    } else {
+                        alert(response.message || 'Oyun başlatılamadı.');
+                    }
+                },
+                error: function () {
+                    alert('Bir hata oluştu.');
+                }
+            });
+        });
+
+        function updateBoard(boardData) {
+            for (var x = 0; x < 10; x++) {
+                for (var y = 0; y < 10; y++) {
+                    var cell = $('.grid-cell[data-x="' + x + '"][data-y="' + y + '"]');
+                    cell.removeClass('status-1');
+                    cell.text('');
+
+                    if (boardData[x][y] === 1) {
+                        cell.addClass('status-1').text('🚢');
+                    }
+                }
+            }
+        }
+    });
+</script>

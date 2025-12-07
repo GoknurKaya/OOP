@@ -3,18 +3,19 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// DbContext DI kaydýnda connection string verme — buna gerek yok
-builder.Services.AddDbContext<AppDbContext>();
+builder.Services.AddControllersWithViews();
 
-// Session
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? "Server=GÖKNUR\\SQLEXPRESS;Database=MyAppDB;Trusted_Connection=True;TrustServerCertificate=True;"));
+
+builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
-
-builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
@@ -26,11 +27,9 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
 app.UseRouting();
-app.UseSession();
-
 app.UseAuthorization();
+app.UseSession();
 
 app.MapControllerRoute(
     name: "default",
