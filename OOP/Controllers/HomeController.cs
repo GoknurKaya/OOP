@@ -10,6 +10,7 @@ namespace OOP.Controllers
     public class HomeController : Controller
     {
         private readonly AppDbContext _context;
+        private const int HITS_TO_WIN = 9; // Kazanmak için gereken isabet sayısı
 
         public HomeController(AppDbContext context)
         {
@@ -107,6 +108,8 @@ namespace OOP.Controllers
 
             HttpContext.Session.SetString("AIBoard", JsonSerializer.Serialize(aiBoard));
             HttpContext.Session.SetInt32("ShotCount", 0);
+            HttpContext.Session.SetInt32("PlayerHits", 0); // Oyuncu isabet sayısı
+            HttpContext.Session.SetInt32("AIHits", 0); // AI isabet sayısı
 
             return Json(new { success = true });
         }
@@ -149,19 +152,31 @@ namespace OOP.Controllers
             var aiBoard = JsonSerializer.Deserialize<GameBoard>(aiBoardJson);
             var playerBoard = JsonSerializer.Deserialize<GameBoard>(playerBoardJson);
 
+            // Daha önce ateş edilmiş mi kontrol et
             if (aiBoard.GetSquareStatus(x, y) == 2 || aiBoard.GetSquareStatus(x, y) == 3)
             {
                 return Json(new { success = false, message = "Bu kareye daha önce ateş ettiniz.", alreadyShot = true });
             }
 
+            // Atış sayısını artır
             int shotCount = HttpContext.Session.GetInt32("ShotCount") ?? 0;
             shotCount++;
             HttpContext.Session.SetInt32("ShotCount", shotCount);
 
+            // Oyuncu ateş etti
             bool playerHit = aiBoard.FireAt(x, y);
             int playerStatus = aiBoard.GetSquareStatus(x, y);
 
-            if (aiBoard.AllShipsSunk())
+            // İsabet sayısını güncelle
+            int playerHits = HttpContext.Session.GetInt32("PlayerHits") ?? 0;
+            if (playerHit)
+            {
+                playerHits++;
+                HttpContext.Session.SetInt32("PlayerHits", playerHits);
+            }
+
+            // Oyuncu kazandı mı? (9 isabet)
+            if (playerHits >= HITS_TO_WIN)
             {
                 HttpContext.Session.SetString("AIBoard", JsonSerializer.Serialize(aiBoard));
                 return Json(new
@@ -171,10 +186,13 @@ namespace OOP.Controllers
                     winner = "Player",
                     PlayerHit = playerHit,
                     PlayerStatus = playerStatus,
-                    shotCount = shotCount
+                    shotCount = shotCount,
+                    playerHits = playerHits,
+                    aiHits = HttpContext.Session.GetInt32("AIHits") ?? 0
                 });
             }
 
+            // AI'nın sırası
             Random rand = new Random();
             int aiX, aiY;
             int attempts = 0;
@@ -189,7 +207,16 @@ namespace OOP.Controllers
             bool aiHit = playerBoard.FireAt(aiX, aiY);
             int aiStatus = playerBoard.GetSquareStatus(aiX, aiY);
 
-            if (playerBoard.AllShipsSunk())
+            // AI isabet sayısını güncelle
+            int aiHits = HttpContext.Session.GetInt32("AIHits") ?? 0;
+            if (aiHit)
+            {
+                aiHits++;
+                HttpContext.Session.SetInt32("AIHits", aiHits);
+            }
+
+            // AI kazandı mı? (9 isabet)
+            if (aiHits >= HITS_TO_WIN)
             {
                 HttpContext.Session.SetString("PlayerBoard", JsonSerializer.Serialize(playerBoard));
                 HttpContext.Session.SetString("AIBoard", JsonSerializer.Serialize(aiBoard));
@@ -201,10 +228,13 @@ namespace OOP.Controllers
                     PlayerHit = playerHit,
                     PlayerStatus = playerStatus,
                     aiShot = new { x = aiX, y = aiY, hit = aiHit, status = aiStatus },
-                    shotCount = shotCount
+                    shotCount = shotCount,
+                    playerHits = playerHits,
+                    aiHits = aiHits
                 });
             }
 
+            // Oyun devam ediyor
             HttpContext.Session.SetString("AIBoard", JsonSerializer.Serialize(aiBoard));
             HttpContext.Session.SetString("PlayerBoard", JsonSerializer.Serialize(playerBoard));
 
@@ -213,7 +243,9 @@ namespace OOP.Controllers
                 success = true,
                 PlayerHit = playerHit,
                 PlayerStatus = playerStatus,
-                aiShot = new { x = aiX, y = aiY, hit = aiHit, status = aiStatus }
+                aiShot = new { x = aiX, y = aiY, hit = aiHit, status = aiStatus },
+                playerHits = playerHits,
+                aiHits = aiHits
             });
         }
 
@@ -239,6 +271,8 @@ namespace OOP.Controllers
             HttpContext.Session.Remove("PlayerBoard");
             HttpContext.Session.Remove("AIBoard");
             HttpContext.Session.Remove("ShotCount");
+            HttpContext.Session.Remove("PlayerHits");
+            HttpContext.Session.Remove("AIHits");
 
             return Ok();
         }

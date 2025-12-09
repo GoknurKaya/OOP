@@ -69,6 +69,23 @@
             margin: 0;
             color: #1976d2;
         }
+
+    .score-display {
+        display: flex;
+        justify-content: center;
+        gap: 40px;
+        margin: 20px 0;
+        font-size: 1.3rem;
+        font-weight: bold;
+    }
+
+    .player-score {
+        color: #4caf50;
+    }
+
+    .ai-score {
+        color: #f44336;
+    }
 </style>
 
 <div class="container-fluid">
@@ -77,6 +94,10 @@
 
     <div class="game-info">
         <h4>Atış Sayısı: <span id="shot-count">0</span></h4>
+        <div class="score-display">
+            <div class="player-score">👤 Sizin İsabetleriniz: <span id="player-hits">0</span>/9</div>
+            <div class="ai-score">🤖 AI'ın İsabetleri: <span id="ai-hits">0</span>/9</div>
+        </div>
         <p id="message" style="margin-top: 10px; font-size: 18px;"></p>
     </div>
 
@@ -145,6 +166,8 @@
     var shotCount = 0;
     var isProcessing = false;
     var gameOver = false;
+    var playerHits = 0;
+    var aiHits = 0;
 
     $(document).ready(function () {
         $('.ai-cell').on('click', function () {
@@ -182,23 +205,35 @@
                         return;
                     }
 
-                    if (response.playerHit) {
-                        cell.removeClass('status-0').addClass('status-2').text('💥');
-                        $('#message').text('🎯 İsabet! Düşman gemisini vurdunuz.');
-                    } else {
-                        cell.removeClass('status-0').addClass('status-3').text('○');
-                        $('#message').text('💨 Iska! Vuramadınız.');
+                    // Skorları güncelle
+                    if (response.playerHits !== undefined) {
+                        playerHits = response.playerHits;
+                        $('#player-hits').text(playerHits);
+                    }
+                    if (response.aiHits !== undefined) {
+                        aiHits = response.aiHits;
+                        $('#ai-hits').text(aiHits);
                     }
 
+                    // Oyuncu atışını göster
+                    if (response.PlayerHit) {
+                        cell.removeClass().addClass('grid-cell ai-cell status-2').html('💥');
+                        $('#message').text('🎯 İsabet! (' + playerHits + '/9)');
+                    } else {
+                        cell.removeClass().addClass('grid-cell ai-cell status-3').html('○');
+                        $('#message').text('💨 Iska!');
+                    }
+
+                    // Oyuncu kazandı mı?
                     if (response.gameover && response.winner === "Player") {
                         gameOver = true;
                         setTimeout(function() {
                             $.ajax({
                                 url: '@Url.Action("EndGame", "Home")',
                                 type: 'POST',
-                                data: { isWin: true, shotsTaken: response.shotCount },
+                                data: { isWin: true, shotsTaken: shotCount },
                                 success: function() {
-                                    alert("🎉 Tebrikler! Tüm düşman gemilerini batırdınız. " + response.shotCount + " atışta kazandınız!");
+                                    alert("🎉 Tebrikler! 9 isabet yaparak kazandınız!\n\nToplam atış: " + shotCount);
                                     window.location.href = '@Url.Action("Statistics", "Home")';
                                 }
                             });
@@ -206,18 +241,20 @@
                         return;
                     }
 
+                    // AI'nın atışını göster
                     setTimeout(function() {
                         if (response.aiShot) {
                             var aiShotCell = $('#player-board .grid-cell[data-x="' + response.aiShot.x + '"][data-y="' + response.aiShot.y + '"]');
 
                             if (response.aiShot.hit) {
-                                aiShotCell.removeClass('status-1').addClass('status-2').text('💥');
-                                $('#message').text($('#message').text() + ' | 🤖 Düşman isabet etti!');
+                                aiShotCell.removeClass().addClass('grid-cell grid-cell-player status-2').html('💥');
+                                $('#message').text($('#message').text() + ' | 🤖 AI isabet etti! (' + aiHits + '/9)');
                             } else {
-                                aiShotCell.removeClass('status-0').addClass('status-3').text('○');
-                                $('#message').text($('#message').text() + ' | 🤖 Düşman ıskaladı.');
+                                aiShotCell.removeClass().addClass('grid-cell grid-cell-player status-3').html('○');
+                                $('#message').text($('#message').text() + ' | 🤖 AI ıskaladı.');
                             }
 
+                            // AI kazandı mı?
                             if (response.gameover && response.winner === "AI") {
                                 gameOver = true;
                                 setTimeout(function() {
@@ -226,7 +263,7 @@
                                         type: 'POST',
                                         data: { isWin: false, shotsTaken: 0 },
                                         success: function() {
-                                            alert("😞 Kaybettiniz! Düşman tüm gemilerinizi batırdı.");
+                                            alert("😞 Kaybettiniz! AI 9 isabet yaparak kazandı.");
                                             window.location.href = '@Url.Action("Statistics", "Home")';
                                         }
                                     });
