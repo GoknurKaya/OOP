@@ -215,14 +215,15 @@
                         $('#ai-hits').text(aiHits);
                     }
 
-                    // Oyuncu atışını göster
-                    if (response.PlayerHit) {
-                        cell.removeClass().addClass('grid-cell ai-cell status-2').html('💥');
-                        $('#message').text('🎯 İsabet! (' + playerHits + '/9)');
-                    } else {
-                        cell.removeClass().addClass('grid-cell ai-cell status-3').html('○');
-                        $('#message').text('💨 Iska!');
-                    }
+                       // Oyuncu atışını göster
+    if (response.playerHit === true) {
+        cell.removeClass().addClass('grid-cell ai-cell status-2').html('💥');
+        $('#message').text('🎯 İsabet! (' + playerHits + '/9)');
+    } else {
+        cell.removeClass().addClass('grid-cell ai-cell status-3').html('○');
+        $('#message').text('💨 Iska!');
+    }
+
 
                     // Oyuncu kazandı mı?
                     if (response.gameover && response.winner === "Player") {

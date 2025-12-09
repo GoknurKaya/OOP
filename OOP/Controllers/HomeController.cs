@@ -184,7 +184,7 @@ namespace OOP.Controllers
                     success = true,
                     gameover = true,
                     winner = "Player",
-                    PlayerHit = playerHit,
+                    playerHit = playerHit,
                     PlayerStatus = playerStatus,
                     shotCount = shotCount,
                     playerHits = playerHits,
