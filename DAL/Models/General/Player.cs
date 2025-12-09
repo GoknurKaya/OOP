@@ -11,6 +11,7 @@ namespace DAL.Models.General
         [Required]
         [MaxLength(50)]
         public string Username { get; set; }
+        public string Password { get; set; }
 
         public int TotalGamesPlayed { get; set; } = 0;
         public int TotalWins { get; set; } = 0;

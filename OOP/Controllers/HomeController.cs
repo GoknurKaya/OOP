@@ -17,30 +17,48 @@ namespace OOP.Controllers
             _context = context;
         }
 
+        // Varsayımlar:
+        // 1. Controller'ınızda bir DbContext (_context) bağımlılığı var.
+        // 2. DAL.Models.General.Player modelinin bir 'Password' özelliği var.
+
         [HttpGet]
-        public IActionResult Login() => View();
+        public IActionResult Login()
+        {
+            // Giriş sayfasını göster
+            return View();
+        }
 
         [HttpPost]
-        public async Task<IActionResult> Login(string username)
+        public async Task<IActionResult> Login(string username, string password) // Şifre parametresi eklendi
         {
-            if (string.IsNullOrWhiteSpace(username))
+            // 1. Basit Boşluk Kontrolleri
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             {
-                ViewBag.Error = "Kullanıcı adı boş olamaz.";
+                ViewBag.Error = "Kullanıcı adı ve şifre boş bırakılamaz.";
                 return View();
             }
 
-            var player = await _context.Players.FirstOrDefaultAsync(p => p.Username == username);
+            // 2. Kullanıcıyı Bulma
+            // Şifreler veritabanında HASH'lenmiş olmalıdır! Güvenlik için bu çok önemlidir.
+            // Örnekte basitlik için düz metin karşılaştırması kullanılmıştır.
+            var player = await _context.Players
+                .FirstOrDefaultAsync(p => p.Username == username && p.Password == password);
+            // Gerçek uygulamada: p.PasswordHash == Hash(password)
 
+            // 3. Kullanıcı Kontrolü
             if (player == null)
             {
-                player = new Player { Username = username };
-                _context.Players.Add(player);
-                await _context.SaveChangesAsync();
+                // Kullanıcı adı veya şifre hatalı.
+                ViewBag.Error = "Kullanıcı adı veya şifre yanlış.";
+                return View();
             }
 
+            // 4. Başarılı Giriş İşlemi
+            // Mevcut oturumu temizleyip yeni oyuncu kimliğini oturuma kaydet
             HttpContext.Session.Clear();
             HttpContext.Session.SetInt32("CurrentPlayerId", player.Id);
 
+            // Yönlendirme
             return RedirectToAction("ShipPlacement");
         }
 

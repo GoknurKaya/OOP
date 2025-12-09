@@ -1,21 +1,118 @@
 ﻿@using DAL.Models.General
 @model Player
 @{
-    ViewData["Title"] = "Giriş";
+    ViewData["Title"] = "Giriş Yap";
 }
 
-<h2>Battleship Giriş</h2>
+<style>
+    body {
+        background-image: url('/img/amiral_batti.png'); /* Örnek Resim URL'si, bunu kendi yolunuzla değiştirin! */
+        background-size: cover; /* Resmi tüm arka plana sığdır */
+        background-position: center center; /* Resmi ortala */
+        background-repeat: no-repeat;
+        min-height: 100vh;
+        display: flex;
+        align-items: center; /* Dikeyde ortala */
+        justify-content: center; /* Yatayda ortala */
+        margin: 0; /* Tarayıcı varsayılan kenar boşluğunu kaldır */
+        padding: 0;
+    }
 
-<form asp-action="Login" method="post">
-    <div class="form-group">
-        <label for="username">Kullanıcı Adı:</label>
-        <input type="text" id="username" name="username" class="form-control" required />
+    /* 📄 Giriş Kartı Stili */
+    .login-card {
+        max-width: 400px;
+        width: 100%;
+        padding: 40px;
+        border-radius: 10px; /* Görseldeki gibi hafifçe yuvarlatılmış */
+        /* Kart Görünümü: Hafif şeffaf beyaz/açık renk */
+        background-color: rgba(255, 255, 255, 0.9); /* %90 opak beyaz */
+        /* Kart Gölgesi: Daha belirgin ve yaygın */
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+        /* Kart Kenarlığı: Görseldeki gibi hafif bir kenarlık ekleyebiliriz (isteğe bağlı) */
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* 🎯 Başlık İkonu Stili (Görseldeki Logo yerine metin ikon kullandık) */
+    .card-title-icon {
+        /* Görseldeki logoyu taklit eden bir emoji veya resim */
+        font-size: 2.5rem;
+        /* Görseldeki logonun ortasındaki kırmızı/pembe ton */
+        color: #e54b65;
+        margin-bottom: 10px;
+        display: block; /* İkonun kendi satırında olmasını sağla */
+    }
+
+    /* 📝 Form Alanları ve Başlıklar */
+    .form-control {
+        border-radius: 5px;
+        border: 1px solid #ced4da;
+        padding: 10px;
+    }
+
+    /* 🔴 Oyna Düğmesi Stili */
+    .btn-danger {
+        /* Görseldeki koyu kırmızı/bordo rengine yakın bir ton */
+        background-color: #c73248;
+        border-color: #c73248;
+        padding: 12px 25px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        border-radius: 5px;
+    }
+
+        .btn-danger:hover {
+            background-color: #a82a3b;
+            border-color: #a82a3b;
+        }
+
+    /* Başlık Rengi */
+    .card-title-text {
+        color: #343a40 !important; /* Koyu gri/siyah başlık */
+    }
+
+    /* Açıklama Metni Rengi */
+    .text-muted {
+        color: #6c757d !important;
+    }
+
+</style>
+
+<div class="container d-flex align-items-center justify-content-center h-100">
+    <div class="login-card">
+        <div class="text-center">
+
+            <span class="card-title-icon">
+                🎯
+            </span>
+
+            <h2 class="mb-4 card-title-text">**Amiral Battı Giriş**</h2>
+            <p class="text-muted">Oyuna başlamak için bilgilerinizi girin.</p>
+        </div>
+
+        <form asp-action="Login" method="post">
+
+            <div class="form-group mb-3">
+                <label for="username" class="form-label">Kullanıcı Adı:</label>
+                <input type="text" id="username" name="username" class="form-control" placeholder="Kullanıcı adınızı girin" required />
+                @Html.ValidationMessageFor(model => model.Username, "", new { @class = "text-danger" })
+            </div>
+
+            <div class="form-group mb-4">
+                <label for="password" class="form-label">Şifre:</label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="Şifrenizi girin" required />
+                @Html.ValidationMessageFor(model => model.Password, "", new { @class = "text-danger" })
+            </div>
+
+            <div class="d-grid">
+                <button type="submit" class="btn btn-danger btn-lg">
+                    Oyna!
+                </button>
+            </div>
+        </form>
+
+        @if (ViewBag.Error != null)
+        {
+            <p class="text-danger mt-3 text-center">**Hata:** @ViewBag.Error</p>
+        }
     </div>
-    <br>
-    <button type="submit" class="btn btn-primary">Oyna (Play)</button>
-</form>
-
-@if (ViewBag.Error != null)
-{
-    <p class="text-danger">@ViewBag.Error</p>
-}
+</div>
