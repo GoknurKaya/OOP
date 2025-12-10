@@ -100,3 +100,88 @@ body {
         font-size: 2rem;
     }
 }
+
+/* Animasyonlar */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-100px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes shipPulse {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(76, 175, 80, 0.6);
+    }
+
+    50% {
+        box-shadow: 0 0 25px rgba(76, 175, 80, 0.9);
+    }
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .placement-container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .control-panel {
+        width: 90%;
+        max-width: 500px;
+    }
+}
+
+@media (max-width: 768px) {
+    .placement-title {
+        font-size: 2.5rem;
+    }
+
+    .grid-container {
+        grid-template-columns: repeat(10, 40px);
+        grid-template-rows: repeat(10, 40px);
+    }
+
+    .grid-cell {
+        font-size: 22px;
+    }
+}
