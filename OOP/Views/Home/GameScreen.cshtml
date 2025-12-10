@@ -4,84 +4,230 @@
 }
 
 <style>
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        margin: 0;
+        padding: 20px 0;
+    }
 
-    .container-fluid {
-        width: 100%;
-        max-width: 1200px; /* Tahtaları rahatça ortalamak için genişlik */
-        padding: 0; 
+    .game-wrapper {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Başlık Bölümü */
+    .game-header {
+        text-align: center;
+        margin-bottom: 30px;
+        animation: fadeInDown 0.6s ease-out;
+    }
+
+    .game-title {
+        font-size: 3rem;
+        font-weight: bold;
+        color: white;
+        text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+        margin-bottom: 10px;
+        letter-spacing: 2px;
+    }
+
+    /* Skor Paneli */
+    .score-panel {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 25px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        animation: fadeInDown 0.8s ease-out;
+    }
+
+    .score-container {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .score-item {
         display: flex;
         flex-direction: column;
         align-items: center;
+        padding: 15px 30px;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 15px;
+        min-width: 150px;
+        transition: transform 0.3s;
     }
 
-    .text-center {
+        .score-item:hover {
+            transform: translateY(-5px);
+        }
+
+    .score-label {
+        font-size: 0.9rem;
+        color: #555;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+
+    .score-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .player-score-item {
+        background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+    }
+
+    .ai-score-item {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    }
+
+    .shot-count-item {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    }
+
+    /* Mesaj Kutusu */
+    .message-box {
         text-align: center;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 15px;
+        margin-top: 15px;
+        backdrop-filter: blur(10px);
     }
 
-    /* --- TAHTA BÖLÜMLERİNİN HİZALANMASI (Tahtaların Ortalanması) --- */
-    .row {
-        /* Tahtaları yan yana getirir ve satırı ortalar */
+    #message {
+        font-size: 1.3rem;
+        font-weight: bold;
+        color: white;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        min-height: 30px;
+    }
+
+    /* Tahta Konteyneri */
+    .boards-container {
         display: flex;
         justify-content: center;
-        width: 100%;
-        gap: 30px; /* Tahtalar arasına boşluk */
+        gap: 40px;
+        flex-wrap: wrap;
+        animation: fadeIn 1s ease-out;
     }
 
-    .col-md-6 {
-        /* Kendi içeriğini ortalar (Başlık ve Tahta) */
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 0;
-        max-width: fit-content; /* İçeriği kadar genişle */
+    .board-section {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        padding: 25px;
+        box-shadow: 0 15px 50px rgba(0,0,0,0.4);
+        transition: transform 0.3s;
     }
 
+        .board-section:hover {
+            transform: translateY(-5px);
+        }
+
+    .board-title {
+        text-align: center;
+        font-size: 1.8rem;
+        font-weight: bold;
+        margin-bottom: 20px;
+        color: #333;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .player-board-section .board-title {
+        color: #4caf50;
+    }
+
+    .ai-board-section .board-title {
+        color: #f44336;
+    }
+
+    /* Grid Tasarımı */
     .grid-container {
         display: grid;
-        grid-template-columns: repeat(10, 35px);
-        grid-template-rows: repeat(10, 35px);
-        gap: 2px;
-        border: 3px solid #333;
-        margin: 10px auto;
+        grid-template-columns: repeat(10, 45px);
+        grid-template-rows: repeat(10, 45px);
+        gap: 3px;
+        border: 4px solid #333;
+        border-radius: 10px;
+        padding: 5px;
+        background: linear-gradient(135deg, #434343 0%, #000000 100%);
+        box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
     }
 
     .grid-cell {
-        background-color: #e3f2fd;
-        border: 1px solid #90caf9;
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        border: 2px solid #90caf9;
+        border-radius: 5px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 14px;
+        font-size: 24px;
         transition: all 0.2s;
+        position: relative;
+        overflow: hidden;
     }
 
+        .grid-cell::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .grid-cell:hover::before {
+            opacity: 1;
+        }
+
         .grid-cell:hover {
-            transform: scale(1.1);
+            transform: scale(1.15);
             z-index: 10;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
 
     .grid-cell-player {
         cursor: default;
     }
 
+        .grid-cell-player:hover {
+            transform: scale(1.05);
+        }
+
+    /* Durum Stilleri */
     .status-0 {
-        background-color: #e3f2fd;
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
     }
 
     .status-1 {
-        background-color: #4caf50;
+        background: linear-gradient(135deg, #4caf50 0%, #81c784 100%);
         color: white;
+        box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        animation: pulse 2s infinite;
     }
 
     .status-2 {
-        background-color: #f44336;
+        background: linear-gradient(135deg, #f44336 0%, #e57373 100%);
         color: white;
+        box-shadow: 0 0 20px rgba(244, 67, 54, 0.8);
+        animation: explosion 0.5s ease-out;
     }
 
     .status-3 {
-        background-color: #03a9f4;
+        background: linear-gradient(135deg, #03a9f4 0%, #4fc3f7 100%);
         color: white;
+        box-shadow: 0 0 10px rgba(3, 169, 244, 0.5);
     }
 
     .disabled-board {
@@ -89,53 +235,78 @@
         opacity: 0.6;
     }
 
-    .game-info {
+    /* Buton Stili */
+    .action-buttons {
         text-align: center;
-        margin: 20px 0;
-        padding: 15px;
-        background: #f5f5f5;
-        border-radius: 8px;
-    }
-
-        .game-info h4 {
-            margin: 0;
-            color: #1976d2;
-        }
-
-    .score-display {
+        margin-top: 40px;
         display: flex;
         justify-content: center;
-        gap: 40px;
-        margin: 20px 0;
-        font-size: 1.3rem;
+        gap: 20px;
+        flex-wrap: wrap;
+        animation: fadeInUp 1s ease-out;
+    }
+
+    .btn-game {
+        padding: 15px 35px;
+        font-size: 1.2rem;
         font-weight: bold;
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     }
 
-    .player-score {
-        color: #4caf50;
+        .btn-game:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        }
+
+    .btn-stats {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
     }
 
-    .ai-score {
-        color: #f44336;
+    .btn-new-game {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
     }
+
 </style>
 
-<div class="container-fluid">
-    <h2 class="text-center">💣 Battleship - Savaş Alanı</h2>
-    <hr>
-
-    <div class="game-info">
-        <h4>Atış Sayısı: <span id="shot-count">0</span></h4>
-        <div class="score-display">
-            <div class="player-score">👤 Sizin İsabetleriniz: <span id="player-hits">0</span>/9</div>
-            <div class="ai-score">🤖 AI'ın İsabetleri: <span id="ai-hits">0</span>/9</div>
-        </div>
-        <p id="message" style="margin-top: 10px; font-size: 18px;"></p>
+<div class="game-wrapper">
+    <div class="game-header">
+        <h1 class="game-title">⚓ AMIRAL BATTI ⚓</h1>
     </div>
 
-    <div class="row">
-        <div class="col-md-6">
-            <h3 class="text-center">Sizin Tahtanız</h3>
+    <div class="score-panel">
+        <div class="score-container">
+            <div class="score-item shot-count-item">
+                <div class="score-label">💣 Toplam Atış</div>
+                <div class="score-value" id="shot-count">0</div>
+            </div>
+
+            <div class="score-item player-score-item">
+                <div class="score-label">👤 Sizin İsabetleriniz</div>
+                <div class="score-value"><span id="player-hits">0</span>/9</div>
+            </div>
+
+            <div class="score-item ai-score-item">
+                <div class="score-label">🤖 AI'ın İsabetleri</div>
+                <div class="score-value"><span id="ai-hits">0</span>/9</div>
+            </div>
+        </div>
+
+        <div class="message-box">
+            <p id="message">Rakip tahtasına ateş edin!</p>
+        </div>
+    </div>
+
+    <div class="boards-container">
+        <div class="board-section player-board-section">
+            <h3 class="board-title">🛡️ Sizin Filonuz</h3>
             <div class="grid-container" id="player-board">
                 @for (int y = 0; y < 10; y++)
                 {
@@ -154,7 +325,7 @@
                             }
                             else if (cellValue == 3)
                             {
-                                @:○
+                                @:💨
                             }
                         </div>
                     }
@@ -162,8 +333,8 @@
             </div>
         </div>
 
-        <div class="col-md-6">
-            <h3 class="text-center">Rakip Tahtası (Atış Alanınız)</h3>
+        <div class="board-section ai-board-section">
+            <h3 class="board-title">🎯 Düşman Filوsu</h3>
             <div class="grid-container" id="ai-board">
                 @for (int y = 0; y < 10; y++)
                 {
@@ -178,7 +349,7 @@
                             }
                             else if (status == 3)
                             {
-                                @:○
+                                @:💨
                             }
                         </div>
                     }
@@ -187,9 +358,9 @@
         </div>
     </div>
 
-    <div class="text-center mt-3">
-        <a asp-action="Statistics" class="btn btn-info">📊 İstatistiklerime Bak</a>
-        <a asp-action="ShipPlacement" class="btn btn-warning">🔄 Yeni Oyun</a>
+    <div class="action-buttons">
+        <a asp-action="Statistics" class="btn-game btn-stats">📊 İstatistiklerim</a>
+        <a asp-action="ShipPlacement" class="btn-game btn-new-game">🔄 Yeni Oyun</a>
     </div>
 </div>
 
@@ -237,7 +408,6 @@
                         return;
                     }
 
-                    // Skorları güncelle
                     if (response.playerHits !== undefined) {
                         playerHits = response.playerHits;
                         $('#player-hits').text(playerHits);
@@ -247,17 +417,14 @@
                         $('#ai-hits').text(aiHits);
                     }
 
-                       // Oyuncu atışını göster
-    if (response.playerHit === true) {
-        cell.removeClass().addClass('grid-cell ai-cell status-2').html('💥');
-        $('#message').text('🎯 İsabet! (' + playerHits + '/9)');
-    } else {
-        cell.removeClass().addClass('grid-cell ai-cell status-3').html('○');
-        $('#message').text('💨 Iska!');
-    }
+                    if (response.playerHit === true) {
+                        cell.removeClass().addClass('grid-cell ai-cell status-2').html('💥');
+                        $('#message').text('🎯 İSABET! Harika atış! (' + playerHits + '/9)');
+                    } else {
+                        cell.removeClass().addClass('grid-cell ai-cell status-3').html('💨');
+                        $('#message').text('💨 Iskaladınız!');
+                    }
 
-
-                    // Oyuncu kazandı mı?
                     if (response.gameover && response.winner === "Player") {
                         gameOver = true;
                         setTimeout(function() {
@@ -266,15 +433,16 @@
                                 type: 'POST',
                                 data: { isWin: true, shotsTaken: shotCount },
                                 success: function() {
-                                    alert("🎉 Tebrikler! 9 isabet yaparak kazandınız!\n\nToplam atış: " + shotCount);
-                                    window.location.href = '@Url.Action("Statistics", "Home")';
+                                    $('#message').html('🎉🏆 TEBRİKLER! KAZANDINIZ! 🏆🎉<br>Toplam Atış: ' + shotCount);
+                                    setTimeout(function() {
+                                        window.location.href = '@Url.Action("Statistics", "Home")';
+                                    }, 2000);
                                 }
                             });
                         }, 500);
                         return;
                     }
 
-                    // AI'nın atışını göster
                     setTimeout(function() {
                         if (response.aiShot) {
                             var aiShotCell = $('#player-board .grid-cell[data-x="' + response.aiShot.x + '"][data-y="' + response.aiShot.y + '"]');
@@ -283,11 +451,10 @@
                                 aiShotCell.removeClass().addClass('grid-cell grid-cell-player status-2').html('💥');
                                 $('#message').text($('#message').text() + ' | 🤖 AI isabet etti! (' + aiHits + '/9)');
                             } else {
-                                aiShotCell.removeClass().addClass('grid-cell grid-cell-player status-3').html('○');
+                                aiShotCell.removeClass().addClass('grid-cell grid-cell-player status-3').html('💨');
                                 $('#message').text($('#message').text() + ' | 🤖 AI ıskaladı.');
                             }
 
-                            // AI kazandı mı?
                             if (response.gameover && response.winner === "AI") {
                                 gameOver = true;
                                 setTimeout(function() {
@@ -296,8 +463,10 @@
                                         type: 'POST',
                                         data: { isWin: false, shotsTaken: 0 },
                                         success: function() {
-                                            alert("😞 Kaybettiniz! AI 9 isabet yaparak kazandı.");
-                                            window.location.href = '@Url.Action("Statistics", "Home")';
+                                            $('#message').html('😞 Kaybettiniz! AI filonuzu batırdı!');
+                                            setTimeout(function() {
+                                                window.location.href = '@Url.Action("Statistics", "Home")';
+                                            }, 2000);
                                         }
                                     });
                                 }, 500);
