@@ -10,55 +10,40 @@ namespace OOP.Controllers
     public class HomeController : Controller
     {
         private readonly AppDbContext _context;
-        private const int HITS_TO_WIN = 9; // Kazanmak için gereken isabet sayısı
+        private const int HITS_TO_WIN = 9;
 
         public HomeController(AppDbContext context)
         {
             _context = context;
         }
 
-        // Varsayımlar:
-        // 1. Controller'ınızda bir DbContext (_context) bağımlılığı var.
-        // 2. DAL.Models.General.Player modelinin bir 'Password' özelliği var.
-
         [HttpGet]
         public IActionResult Login()
         {
-            // Giriş sayfasını göster
             return View();
         }
 
         [HttpPost]
-        public async Task<IActionResult> Login(string username, string password) // Şifre parametresi eklendi
+        public async Task<IActionResult> Login(string username, string password)
         {
-            // 1. Basit Boşluk Kontrolleri
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             {
                 ViewBag.Error = "Kullanıcı adı ve şifre boş bırakılamaz.";
                 return View();
             }
 
-            // 2. Kullanıcıyı Bulma
-            // Şifreler veritabanında HASH'lenmiş olmalıdır! Güvenlik için bu çok önemlidir.
-            // Örnekte basitlik için düz metin karşılaştırması kullanılmıştır.
             var player = await _context.Players
                 .FirstOrDefaultAsync(p => p.Username == username && p.Password == password);
-            // Gerçek uygulamada: p.PasswordHash == Hash(password)
 
-            // 3. Kullanıcı Kontrolü
             if (player == null)
             {
-                // Kullanıcı adı veya şifre hatalı.
                 ViewBag.Error = "Kullanıcı adı veya şifre yanlış.";
                 return View();
             }
 
-            // 4. Başarılı Giriş İşlemi
-            // Mevcut oturumu temizleyip yeni oyuncu kimliğini oturuma kaydet
             HttpContext.Session.Clear();
             HttpContext.Session.SetInt32("CurrentPlayerId", player.Id);
 
-            // Yönlendirme
             return RedirectToAction("ShipPlacement");
         }
 
@@ -126,8 +111,9 @@ namespace OOP.Controllers
 
             HttpContext.Session.SetString("AIBoard", JsonSerializer.Serialize(aiBoard));
             HttpContext.Session.SetInt32("ShotCount", 0);
-            HttpContext.Session.SetInt32("PlayerHits", 0); // Oyuncu isabet sayısı
-            HttpContext.Session.SetInt32("AIHits", 0); // AI isabet sayısı
+            HttpContext.Session.SetInt32("PlayerHits", 0);
+            HttpContext.Session.SetInt32("AIHits", 0);
+            HttpContext.Session.Remove("AITargets"); // Temiz başlangıç
 
             return Json(new { success = true });
         }
@@ -170,22 +156,18 @@ namespace OOP.Controllers
             var aiBoard = JsonSerializer.Deserialize<GameBoard>(aiBoardJson);
             var playerBoard = JsonSerializer.Deserialize<GameBoard>(playerBoardJson);
 
-            // Daha önce ateş edilmiş mi kontrol et
             if (aiBoard.GetSquareStatus(x, y) == 2 || aiBoard.GetSquareStatus(x, y) == 3)
             {
                 return Json(new { success = false, message = "Bu kareye daha önce ateş ettiniz.", alreadyShot = true });
             }
 
-            // Atış sayısını artır
             int shotCount = HttpContext.Session.GetInt32("ShotCount") ?? 0;
             shotCount++;
             HttpContext.Session.SetInt32("ShotCount", shotCount);
 
-            // Oyuncu ateş etti
             bool playerHit = aiBoard.FireAt(x, y);
             int playerStatus = aiBoard.GetSquareStatus(x, y);
 
-            // İsabet sayısını güncelle
             int playerHits = HttpContext.Session.GetInt32("PlayerHits") ?? 0;
             if (playerHit)
             {
@@ -193,7 +175,6 @@ namespace OOP.Controllers
                 HttpContext.Session.SetInt32("PlayerHits", playerHits);
             }
 
-            // Oyuncu kazandı mı? (9 isabet)
             if (playerHits >= HITS_TO_WIN)
             {
                 HttpContext.Session.SetString("AIBoard", JsonSerializer.Serialize(aiBoard));
@@ -210,30 +191,34 @@ namespace OOP.Controllers
                 });
             }
 
-            // AI'nın sırası
-            Random rand = new Random();
-            int aiX, aiY;
-            int attempts = 0;
-
-            do
-            {
-                aiX = rand.Next(10);
-                aiY = rand.Next(10);
-                attempts++;
-            } while ((playerBoard.GetSquareStatus(aiX, aiY) == 2 || playerBoard.GetSquareStatus(aiX, aiY) == 3) && attempts < 100);
+            // AI'nın zeki atışı
+            (int aiX, int aiY) = GetSmartAIShot(playerBoard);
 
             bool aiHit = playerBoard.FireAt(aiX, aiY);
             int aiStatus = playerBoard.GetSquareStatus(aiX, aiY);
 
-            // AI isabet sayısını güncelle
             int aiHits = HttpContext.Session.GetInt32("AIHits") ?? 0;
             if (aiHit)
             {
                 aiHits++;
                 HttpContext.Session.SetInt32("AIHits", aiHits);
+
+                // İsabet koordinatını kaydet
+                var targetList = GetAITargets();
+                targetList.Add(new AITarget { X = aiX, Y = aiY });
+                SaveAITargets(targetList);
+            }
+            else
+            {
+                // Iskaladıysa ve aktif hedef varsa, gemi battı mı kontrol et
+                var targetList = GetAITargets();
+                if (targetList.Count > 0 && IsShipSunk(playerBoard, targetList))
+                {
+                    // Gemi battı, hedefleri temizle
+                    SaveAITargets(new List<AITarget>());
+                }
             }
 
-            // AI kazandı mı? (9 isabet)
             if (aiHits >= HITS_TO_WIN)
             {
                 HttpContext.Session.SetString("PlayerBoard", JsonSerializer.Serialize(playerBoard));
@@ -252,7 +237,6 @@ namespace OOP.Controllers
                 });
             }
 
-            // Oyun devam ediyor
             HttpContext.Session.SetString("AIBoard", JsonSerializer.Serialize(aiBoard));
             HttpContext.Session.SetString("PlayerBoard", JsonSerializer.Serialize(playerBoard));
 
@@ -265,6 +249,135 @@ namespace OOP.Controllers
                 playerHits = playerHits,
                 aiHits = aiHits
             });
+        }
+
+        // AI hedef listesi helper metodları
+        private List<AITarget> GetAITargets()
+        {
+            var targetJson = HttpContext.Session.GetString("AITargets");
+            if (string.IsNullOrEmpty(targetJson))
+                return new List<AITarget>();
+
+            return JsonSerializer.Deserialize<List<AITarget>>(targetJson) ?? new List<AITarget>();
+        }
+
+        private void SaveAITargets(List<AITarget> targets)
+        {
+            HttpContext.Session.SetString("AITargets", JsonSerializer.Serialize(targets));
+        }
+
+        // Zeki AI atış stratejisi
+        private (int, int) GetSmartAIShot(GameBoard playerBoard)
+        {
+            Random rand = new Random();
+            var targets = GetAITargets();
+
+            if (targets.Count > 0)
+            {
+                var lastHit = targets[targets.Count - 1];
+
+                // Yön vektörleri: yukarı, aşağı, sol, sağ
+                var directions = new List<(int dx, int dy)>
+                {
+                    (0, -1), (0, 1), (-1, 0), (1, 0)
+                };
+
+                // Eğer birden fazla isabet varsa, yönü belirle
+                if (targets.Count > 1)
+                {
+                    var prevHit = targets[targets.Count - 2];
+                    int dx = lastHit.X - prevHit.X;
+                    int dy = lastHit.Y - prevHit.Y;
+
+                    // Aynı yönde devam et
+                    int nextX = lastHit.X + dx;
+                    int nextY = lastHit.Y + dy;
+
+                    if (IsValidShot(playerBoard, nextX, nextY))
+                        return (nextX, nextY);
+
+                    // Ters yöne dene
+                    nextX = prevHit.X - dx;
+                    nextY = prevHit.Y - dy;
+
+                    if (IsValidShot(playerBoard, nextX, nextY))
+                        return (nextX, nextY);
+                }
+
+                // Son isabetten başlayarak tüm yönleri dene
+                var shuffledDirs = directions.OrderBy(x => rand.Next()).ToList();
+
+                foreach (var dir in shuffledDirs)
+                {
+                    int newX = lastHit.X + dir.dx;
+                    int newY = lastHit.Y + dir.dy;
+
+                    if (IsValidShot(playerBoard, newX, newY))
+                        return (newX, newY);
+                }
+
+                // Son isabet etrafında yer yoksa, ilk isabete geri dön
+                if (targets.Count > 1)
+                {
+                    var firstHit = targets[0];
+                    foreach (var dir in shuffledDirs)
+                    {
+                        int newX = firstHit.X + dir.dx;
+                        int newY = firstHit.Y + dir.dy;
+
+                        if (IsValidShot(playerBoard, newX, newY))
+                            return (newX, newY);
+                    }
+                }
+            }
+
+            // Hedef yoksa rastgele atış yap
+            int aiX, aiY;
+            int attempts = 0;
+
+            do
+            {
+                aiX = rand.Next(10);
+                aiY = rand.Next(10);
+                attempts++;
+            } while (!IsValidShot(playerBoard, aiX, aiY) && attempts < 100);
+
+            return (aiX, aiY);
+        }
+
+        private bool IsValidShot(GameBoard board, int x, int y)
+        {
+            if (x < 0 || x >= 10 || y < 0 || y >= 10)
+                return false;
+
+            int status = board.GetSquareStatus(x, y);
+            return status != 2 && status != 3;
+        }
+
+        private bool IsShipSunk(GameBoard board, List<AITarget> hitCoordinates)
+        {
+            foreach (var coord in hitCoordinates)
+            {
+                var directions = new List<(int dx, int dy)>
+                {
+                    (0, -1), (0, 1), (-1, 0), (1, 0)
+                };
+
+                foreach (var dir in directions)
+                {
+                    int checkX = coord.X + dir.dx;
+                    int checkY = coord.Y + dir.dy;
+
+                    if (checkX >= 0 && checkX < 10 && checkY >= 0 && checkY < 10)
+                    {
+                        int status = board.GetSquareStatus(checkX, checkY);
+                        if (status == 1)
+                            return false;
+                    }
+                }
+            }
+
+            return true;
         }
 
         [HttpPost]
@@ -291,6 +404,7 @@ namespace OOP.Controllers
             HttpContext.Session.Remove("ShotCount");
             HttpContext.Session.Remove("PlayerHits");
             HttpContext.Session.Remove("AIHits");
+            HttpContext.Session.Remove("AITargets");
 
             return Ok();
         }
@@ -305,5 +419,12 @@ namespace OOP.Controllers
             if (playerStats == null) return NotFound();
             return View(playerStats);
         }
+    }
+
+    // AI hedef koordinatları için sınıf (JSON serialization için)
+    public class AITarget
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
     }
 }
