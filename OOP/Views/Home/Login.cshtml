@@ -6,52 +6,42 @@
 
 <style>
     body {
-        background-image: url('/img/amiral_batti.png'); /* Örnek Resim URL'si, bunu kendi yolunuzla değiştirin! */
-        background-size: cover; /* Resmi tüm arka plana sığdır */
-        background-position: center center; /* Resmi ortala */
+        background-image: url('/img/amiral_batti.png');
+        background-size: cover;
+        background-position: center center;
         background-repeat: no-repeat;
         min-height: 100vh;
         display: flex;
-        align-items: center; /* Dikeyde ortala */
-        justify-content: center; /* Yatayda ortala */
-        margin: 0; /* Tarayıcı varsayılan kenar boşluğunu kaldır */
+        align-items: center;
+        justify-content: center;
+        margin: 0;
         padding: 0;
     }
 
-    /* 📄 Giriş Kartı Stili */
     .login-card {
         max-width: 400px;
         width: 100%;
         padding: 40px;
-        border-radius: 10px; /* Görseldeki gibi hafifçe yuvarlatılmış */
-        /* Kart Görünümü: Hafif şeffaf beyaz/açık renk */
-        background-color: rgba(255, 255, 255, 0.9); /* %90 opak beyaz */
-        /* Kart Gölgesi: Daha belirgin ve yaygın */
+        border-radius: 10px;
+        background-color: rgba(255, 255, 255, 0.9);
         box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
-        /* Kart Kenarlığı: Görseldeki gibi hafif bir kenarlık ekleyebiliriz (isteğe bağlı) */
         border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
-    /* 🎯 Başlık İkonu Stili (Görseldeki Logo yerine metin ikon kullandık) */
     .card-title-icon {
-        /* Görseldeki logoyu taklit eden bir emoji veya resim */
         font-size: 2.5rem;
-        /* Görseldeki logonun ortasındaki kırmızı/pembe ton */
         color: #e54b65;
         margin-bottom: 10px;
-        display: block; /* İkonun kendi satırında olmasını sağla */
+        display: block;
     }
 
-    /* 📝 Form Alanları ve Başlıklar */
     .form-control {
         border-radius: 5px;
         border: 1px solid #ced4da;
         padding: 10px;
     }
 
-    /* 🔴 Oyna Düğmesi Stili */
     .btn-danger {
-        /* Görseldeki koyu kırmızı/bordo rengine yakın bir ton */
         background-color: #c73248;
         border-color: #c73248;
         padding: 12px 25px;
@@ -65,32 +55,43 @@
             border-color: #a82a3b;
         }
 
-    /* Başlık Rengi */
     .card-title-text {
-        color: #343a40 !important; /* Koyu gri/siyah başlık */
+        color: #343a40 !important;
     }
 
-    /* Açıklama Metni Rengi */
     .text-muted {
         color: #6c757d !important;
     }
 
+    .register-link {
+        text-align: center;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #dee2e6;
+    }
+
+        .register-link a {
+            color: #c73248;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+            .register-link a:hover {
+                color: #a82a3b;
+                text-decoration: underline;
+            }
 </style>
 
 <div class="container d-flex align-items-center justify-content-center h-100">
     <div class="login-card">
         <div class="text-center">
-
-            <span class="card-title-icon">
-                🎯
-            </span>
-
-            <h2 class="mb-4 card-title-text">**Amiral Battı Giriş**</h2>
+            <span class="card-title-icon">🎯</span>
+            <h2 class="mb-4 card-title-text">Amiral Battı Giriş</h2>
             <p class="text-muted">Oyuna başlamak için bilgilerinizi girin.</p>
         </div>
 
         <form asp-action="Login" method="post">
-
             <div class="form-group mb-3">
                 <label for="username" class="form-label">Kullanıcı Adı:</label>
                 <input type="text" id="username" name="username" class="form-control" placeholder="Kullanıcı adınızı girin" required />
@@ -112,7 +113,11 @@
 
         @if (ViewBag.Error != null)
         {
-            <p class="text-danger mt-3 text-center">**Hata:** @ViewBag.Error</p>
+            <p class="text-danger mt-3 text-center"><strong>Hata:</strong> @ViewBag.Error</p>
         }
+
+        <div class="register-link">
+            Hesabınız yok mu? <a asp-action="Register">Kayıt Olun</a>
+        </div>
     </div>
 </div>

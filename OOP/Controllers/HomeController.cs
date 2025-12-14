@@ -18,6 +18,71 @@ namespace OOP.Controllers
         }
 
         [HttpGet]
+        public IActionResult Register()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Register(string username, string password, string confirmPassword)
+        {
+            // Validasyon kontrolleri
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            {
+                ViewBag.Error = "Kullanıcı adı ve şifre boş bırakılamaz.";
+                return View();
+            }
+
+            if (username.Length < 3)
+            {
+                ViewBag.Error = "Kullanıcı adı en az 3 karakter olmalıdır.";
+                return View();
+            }
+
+            if (password.Length < 6)
+            {
+                ViewBag.Error = "Şifre en az 6 karakter olmalıdır.";
+                return View();
+            }
+
+            if (password != confirmPassword)
+            {
+                ViewBag.Error = "Şifreler eşleşmiyor.";
+                return View();
+            }
+
+            // Kullanıcı adı zaten var mı kontrol et
+            var existingPlayer = await _context.Players
+                .FirstOrDefaultAsync(p => p.Username == username);
+
+            if (existingPlayer != null)
+            {
+                ViewBag.Error = "Bu kullanıcı adı zaten kullanılıyor.";
+                return View();
+            }
+
+            // Yeni oyuncu oluştur
+            var newPlayer = new Player
+            {
+                Username = username,
+                Password = password, // Not: Gerçek uygulamada hash'lenmiş olmalı!
+                TotalGamesPlayed = 0,
+                TotalWins = 0,
+                TotalShotsFired = 0
+            };
+
+            _context.Players.Add(newPlayer);
+            await _context.SaveChangesAsync();
+
+            ViewBag.Success = "Kayıt başarılı! Şimdi giriş yapabilirsiniz.";
+
+            // 2 saniye sonra login sayfasına yönlendir
+            Response.Headers.Add("Refresh", "2; url=" + Url.Action("Login"));
+
+            return View();
+        }
+
+        [HttpGet]
         public IActionResult Login()
         {
             return View();
@@ -395,6 +460,10 @@ namespace OOP.Controllers
             {
                 player.TotalWins++;
                 player.TotalShotsFired += shotsTaken;
+            }
+            else
+            {
+                 player.TotalShotsFired += shotsTaken;
             }
 
             await _context.SaveChangesAsync();

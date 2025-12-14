@@ -1,0 +1,247 @@
+﻿@using DAL.Models.General
+@model Player
+@{
+    ViewData["Title"] = "Kayıt Ol";
+}
+
+<style>
+    body {
+        background-image: url('/img/amiral_batti.png');
+        background-size: cover;
+        background-position: center center;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        padding: 0;
+    }
+
+    .register-card {
+        max-width: 450px;
+        width: 100%;
+        padding: 40px;
+        border-radius: 15px;
+        background-color: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        animation: slideIn 0.5s ease-out;
+    }
+
+
+    .card-title-icon {
+        font-size: 3rem;
+        color: #e54b65;
+        margin-bottom: 15px;
+        display: block;
+        animation: bounce 1s ease-in-out infinite;
+    }
+
+
+    .card-title-text {
+        color: #343a40 !important;
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+
+    .text-muted {
+        color: #6c757d !important;
+        margin-bottom: 30px;
+    }
+
+    .form-group {
+        margin-bottom: 25px;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #2d3436;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .form-control {
+        border-radius: 8px;
+        border: 2px solid #dfe6e9;
+        padding: 12px 15px;
+        font-size: 1rem;
+        transition: all 0.3s;
+        width: 100%;
+    }
+
+        .form-control:focus {
+            border-color: #c73248;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(199, 50, 72, 0.1);
+        }
+
+    .password-requirements {
+        font-size: 0.85rem;
+        color: #636e72;
+        margin-top: 5px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 5px;
+        border-left: 3px solid #fdcb6e;
+    }
+
+    .btn-danger {
+        background: linear-gradient(135deg, #c73248 0%, #a82a3b 100%);
+        border: none;
+        padding: 14px 30px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        border-radius: 8px;
+        transition: all 0.3s;
+        width: 100%;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 15px rgba(199, 50, 72, 0.3);
+    }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(199, 50, 72, 0.4);
+            background: linear-gradient(135deg, #a82a3b 0%, #8a1f2f 100%);
+        }
+
+        .btn-danger:active {
+            transform: translateY(0);
+        }
+
+    .text-danger {
+        color: #d63031 !important;
+        font-weight: 600;
+        margin-top: 5px;
+        display: block;
+        font-size: 0.9rem;
+    }
+
+    .alert {
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        animation: fadeIn 0.3s;
+    }
+
+    .alert-danger {
+        background-color: #ffe5e5;
+        border: 1px solid #d63031;
+        color: #d63031;
+    }
+
+    .alert-success {
+        background-color: #e8f8f5;
+        border: 1px solid #00b894;
+        color: #00b894;
+    }
+
+    .login-link {
+        text-align: center;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #dfe6e9;
+    }
+
+        .login-link a {
+            color: #c73248;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+            .login-link a:hover {
+                color: #a82a3b;
+                text-decoration: underline;
+            }
+
+</style>
+
+<div class="container d-flex align-items-center justify-content-center h-100">
+    <div class="register-card">
+        <div class="text-center">
+            <span class="card-title-icon">🎯</span>
+            <h2 class="mb-3 card-title-text">Kayıt Ol</h2>
+            <p class="text-muted">Yeni bir hesap oluşturun ve savaşa katılın!</p>
+        </div>
+
+        @if (ViewBag.Success != null)
+        {
+            <div class="alert alert-success">
+                ✓ @ViewBag.Success
+            </div>
+        }
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="alert alert-danger">
+                ✕ @ViewBag.Error
+            </div>
+        }
+
+        <form asp-action="Register" method="post">
+            <div class="form-group">
+                <label for="username" class="form-label">👤 Kullanıcı Adı:</label>
+                <input type="text"
+                       id="username"
+                       name="username"
+                       class="form-control"
+                       placeholder="Kullanıcı adınızı seçin"
+                       required
+                       minlength="3"
+                       maxlength="50" />
+                @Html.ValidationMessageFor(model => model.Username, "", new { @class = "text-danger" })
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">🔒 Şifre:</label>
+                <input type="password"
+                       id="password"
+                       name="password"
+                       class="form-control"
+                       placeholder="Güçlü bir şifre belirleyin"
+                       required
+                       minlength="6" />
+                <div class="password-requirements">
+                    💡 En az 6 karakter uzunluğunda olmalıdır
+                </div>
+                @Html.ValidationMessageFor(model => model.Password, "", new { @class = "text-danger" })
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword" class="form-label">🔒 Şifre Tekrar:</label>
+                <input type="password"
+                       id="confirmPassword"
+                       name="confirmPassword"
+                       class="form-control"
+                       placeholder="Şifrenizi tekrar girin"
+                       required />
+            </div>
+
+            <div class="d-grid">
+                <button type="submit" class="btn btn-danger">
+                    Kayıt Ol
+                </button>
+            </div>
+        </form>
+
+        <div class="login-link">
+            Zaten hesabınız var mı? <a asp-action="Login">Giriş Yapın</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Şifre eşleşme kontrolü
+    document.querySelector('form').addEventListener('submit', function(e) {
+        var password = document.getElementById('password').value;
+        var confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            alert('⚠️ Şifreler eşleşmiyor! Lütfen kontrol edin.');
+            return false;
+        }
+    });
+</script>
