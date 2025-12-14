@@ -445,6 +445,29 @@ namespace OOP.Controllers
             return true;
         }
 
+        public async Task<IActionResult> Statistics()
+        {
+            var playerId = HttpContext.Session.GetInt32("CurrentPlayerId");
+            if (!playerId.HasValue) return RedirectToAction("Login");
+
+            var playerStats = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId.Value);
+
+            if (playerStats == null) return NotFound();
+
+            // OYUN GEÇMİŞİNİ ÇEK
+            var recentGames = await _context.GameSessions
+                .Where(g => g.PlayerId == playerId.Value && g.IsCompleted)
+                .OrderByDescending(g => g.CreatedAt)
+                .Take(10) // Son 10 oyunu göster
+                .ToListAsync();
+
+            // ViewBag'e ekle
+            ViewBag.RecentGames = recentGames;
+
+            return View(playerStats);
+        }
+
+        // EndGame metodu - DÜZELTİLMİŞ
         [HttpPost]
         public async Task<IActionResult> EndGame(bool isWin, int shotsTaken)
         {
@@ -454,6 +477,7 @@ namespace OOP.Controllers
             var player = await _context.Players.FindAsync(playerId.Value);
             if (player == null) return NotFound();
 
+            // Player istatistiklerini güncelle
             player.TotalGamesPlayed++;
 
             if (isWin)
@@ -463,11 +487,32 @@ namespace OOP.Controllers
             }
             else
             {
-                 player.TotalShotsFired += shotsTaken;
+                player.TotalShotsFired += shotsTaken;
+            }
+
+            // *** OYUN GEÇMİŞİNİ KAYDET ***
+            var playerBoardJson = HttpContext.Session.GetString("PlayerBoard");
+            var aiBoardJson = HttpContext.Session.GetString("AIBoard");
+
+            if (!string.IsNullOrEmpty(playerBoardJson) && !string.IsNullOrEmpty(aiBoardJson))
+            {
+                var gameSession = new GameSession
+                {
+                    PlayerId = playerId.Value,
+                    PlayerBoardJson = playerBoardJson,
+                    AIBoardJson = aiBoardJson,
+                    ShotsFired = shotsTaken,
+                    CreatedAt = DateTime.Now,
+                    IsCompleted = true,
+                    PlayerWon = isWin
+                };
+
+                _context.GameSessions.Add(gameSession);
             }
 
             await _context.SaveChangesAsync();
 
+            // Session temizle
             HttpContext.Session.Remove("PlayerBoard");
             HttpContext.Session.Remove("AIBoard");
             HttpContext.Session.Remove("ShotCount");
@@ -476,17 +521,6 @@ namespace OOP.Controllers
             HttpContext.Session.Remove("AITargets");
 
             return Ok();
-        }
-
-        public async Task<IActionResult> Statistics()
-        {
-            var playerId = HttpContext.Session.GetInt32("CurrentPlayerId");
-            if (!playerId.HasValue) return RedirectToAction("Login");
-
-            var playerStats = await _context.Players.FirstOrDefaultAsync(p => p.Id == playerId.Value);
-
-            if (playerStats == null) return NotFound();
-            return View(playerStats);
         }
     }
 
